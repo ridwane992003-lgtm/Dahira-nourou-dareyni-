@@ -3,11 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title> Nouroudareyni Touba Tivaouane Peulh </title>
+<title>Nouroudareyni Touba Tivaouane</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
   :root {
     --blue-900:#0B3D91;
@@ -230,6 +233,7 @@
     <p class="brand-title">NOUROUDAREYNI<br>TOUBA TIVAOUANE</p>
     <p class="brand-sub">Plateforme de gestion du Dahira</p>
     <div class="login-msg">Accès réservé aux membres autorisés</div>
+  <div class="error-msg" id="syncBadge" style="color:var(--ink-soft);font-weight:500;margin-bottom:10px;"></div>
     <form id="loginForm">
       <div class="field">
         <label for="loginCode">Code d'accès</label>
@@ -425,8 +429,50 @@
 <script>
 (function(){
   "use strict";
+
+  /* =========================================================================
+     CONFIGURATION FIREBASE
+     Pour activer la synchronisation multi-appareils (temps réel, plusieurs
+     administrateurs, données partagées) :
+     1) Crée un projet gratuit sur https://console.firebase.google.com
+     2) Active "Firestore Database" (mode production) et "Authentication"
+        (méthode Email/Mot de passe).
+     3) Dans Authentication > Users, ajoute UN utilisateur avec :
+          email : admin@nouroudareyni-dahira.app
+          mot de passe : nourou2026  (= ton code d'accès initial, 6+ caractères)
+     4) Dans les règles Firestore, colle :
+          rules_version = '2';
+          service cloud.firestore {
+            match /databases/{database}/documents {
+              match /{document=**} {
+                allow read, write: if request.auth != null;
+              }
+            }
+          }
+     5) Remplace les valeurs ci-dessous par la config de ton projet
+        (Paramètres du projet > Général > Vos applications > SDK config).
+     Si tu laisses ces valeurs telles quelles, l'appli fonctionne quand même,
+     mais en LOCAL uniquement (les données restent dans ce navigateur).
+  ========================================================================= */
+  const firebaseConfig = {
+    apiKey: "AIzaSyDrwrFwFzkzoB5ZWHD0dUxFgv17MURtadc",
+    authDomain: "dahira-nouroudareyni.firebaseapp.com",
+    projectId: "dahira-nouroudareyni",
+    storageBucket: "dahira-nouroudareyni.firebasestorage.app",
+    messagingSenderId: "562225602699",
+    appId: "1:562225602699:web:69c7fc4c9ce8bd9304b48e"
+  };
+  const ADMIN_EMAIL = "admin@nouroudareyni-dahira.app";
+  const FIREBASE_ENABLED = !!(firebaseConfig.apiKey && firebaseConfig.apiKey !== "VOTRE_API_KEY" && typeof firebase !== "undefined");
+
+  let auth = null, db = null;
+  if (FIREBASE_ENABLED) {
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+  }
+
   const DEFAULTS = {
-    code: "nourou2026",
     name: "NOUROUDAREYNI TOUBA TIVAOUANE",
     logo: null,
     members: [],
@@ -437,24 +483,24 @@
     try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
     catch(e){ return fallback; }
   }
-  function save(key, val){
+  function saveLocal(key, val){
     try { localStorage.setItem(key, JSON.stringify(val)); } catch(e){}
   }
 
   let state = {
-    code: loadJSON('dahira_code', DEFAULTS.code),
+    code: loadJSON('dahira_code', 'nourou2026'), // utilisé seulement en mode local (sans Firebase)
     name: loadJSON('dahira_name', DEFAULTS.name),
     logo: loadJSON('dahira_logo', DEFAULTS.logo),
     members: loadJSON('dahira_members', DEFAULTS.members),
     xassida: loadJSON('dahira_xassida', DEFAULTS.xassida)
   };
 
-  function persist(){
-    save('dahira_code', state.code);
-    save('dahira_name', state.name);
-    save('dahira_logo', state.logo);
-    save('dahira_members', state.members);
-    save('dahira_xassida', state.xassida);
+  function persistLocalFallback(){
+    saveLocal('dahira_code', state.code);
+    saveLocal('dahira_name', state.name);
+    saveLocal('dahira_logo', state.logo);
+    saveLocal('dahira_members', state.members);
+    saveLocal('dahira_xassida', state.xassida);
   }
 
   function toast(msg){
@@ -462,48 +508,82 @@
     t.textContent = msg;
     t.classList.add('show');
     clearTimeout(t._timer);
-    t._timer = setTimeout(()=>t.classList.remove('show'), 2200);
+    t._timer = setTimeout(()=>t.classList.remove('show'), 2400);
   }
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
+  // Badge visible sur l'écran de connexion indiquant le mode actif
+  (function initSyncBadge(){
+    const badge = document.getElementById('syncBadge');
+    if (!badge) return;
+    if (FIREBASE_ENABLED) { badge.style.color = 'var(--success)'; badge.textContent = '☁️ Synchronisation multi-appareils activée'; }
+    else { badge.textContent = '💾 Mode local (données stockées sur cet appareil uniquement)'; }
+  })();
+
   /* ---------- BRANDING ---------- */
   function applyBranding(){
     document.querySelectorAll('#sideBrandText').forEach(el => el.textContent = state.name);
-    document.querySelectorAll('.brand-title').forEach(el => el.innerHTML = state.name.replace(/\s+/g,' ').trim().split(' ').join('<br>').length > 40 ? state.name : state.name);
+    document.querySelectorAll('.brand-title').forEach(el => el.textContent = state.name);
     document.title = state.name;
     const logoBoxes = [document.getElementById('loginLogoBox'), document.getElementById('sideLogoBox'), document.getElementById('settingsLogoPreview')];
     logoBoxes.forEach(box=>{
       if(!box) return;
-      if(state.logo){
-        box.innerHTML = '<img src="'+state.logo+'" alt="Logo du Dahira">';
-      }
+      if(state.logo){ box.innerHTML = '<img src="'+state.logo+'" alt="Logo du Dahira">'; }
     });
     document.getElementById('dahiraNameInput').value = state.name;
   }
 
-  /* ---------- LOGIN ---------- */
+  /* ---------- LOGIN / AUTH ---------- */
   const loginForm = document.getElementById('loginForm');
   const loginScreen = document.getElementById('loginScreen');
   const appEl = document.getElementById('app');
+  let unsubscribers = [];
 
-  function tryEnter(){
-    if(sessionStorage.getItem('dahira_session') === '1'){
-      loginScreen.style.display = 'none';
-      appEl.style.display = 'block';
-      renderAll();
-    }
+  function clearListeners(){
+    unsubscribers.forEach(u => { try{ u(); }catch(e){} });
+    unsubscribers = [];
+  }
+
+  function enterApp(){
+    loginScreen.style.display = 'none';
+    appEl.style.display = 'block';
+    if (FIREBASE_ENABLED) attachFirestoreListeners();
+    else renderAll();
+  }
+
+  function leaveApp(){
+    clearListeners();
+    appEl.style.display = 'none';
+    loginScreen.style.display = 'flex';
+    document.getElementById('loginCode').value = '';
+  }
+
+  if (FIREBASE_ENABLED) {
+    auth.onAuthStateChanged(function(user){
+      if (user) enterApp();
+      else leaveApp();
+    });
   }
 
   loginForm.addEventListener('submit', function(e){
     e.preventDefault();
     const val = document.getElementById('loginCode').value;
     const errEl = document.getElementById('loginError');
-    if(val === state.code){
+    errEl.textContent = '';
+
+    if (FIREBASE_ENABLED) {
+      auth.signInWithEmailAndPassword(ADMIN_EMAIL, val).catch(function(){
+        errEl.textContent = "Code incorrect. Accès refusé. Veuillez réessayer.";
+        document.getElementById('loginCode').value = '';
+      });
+      return;
+    }
+
+    // Mode local (sans Firebase)
+    if (val === state.code) {
       sessionStorage.setItem('dahira_session','1');
-      errEl.textContent = '';
-      loginScreen.style.display = 'none';
-      appEl.style.display = 'block';
+      enterApp();
       renderAll();
     } else {
       errEl.textContent = "Code incorrect. Accès refusé. Veuillez réessayer.";
@@ -512,20 +592,60 @@
   });
 
   document.getElementById('logoutBtn').addEventListener('click', function(){
-    sessionStorage.removeItem('dahira_session');
-    appEl.style.display = 'none';
-    loginScreen.style.display = 'flex';
-    document.getElementById('loginCode').value = '';
+    if (FIREBASE_ENABLED) { auth.signOut(); }
+    else { sessionStorage.removeItem('dahira_session'); leaveApp(); }
   });
+
+  function tryEnterLocal(){
+    if (!FIREBASE_ENABLED && sessionStorage.getItem('dahira_session') === '1') {
+      enterApp();
+      renderAll();
+    }
+  }
+
+  /* ---------- FIRESTORE SYNC (temps réel) ---------- */
+  function attachFirestoreListeners(){
+    clearListeners();
+
+    const uSettings = db.collection('dahira').doc('settings').onSnapshot(function(doc){
+      const d = doc.exists ? doc.data() : {};
+      state.name = d.name || DEFAULTS.name;
+      state.logo = d.logo || null;
+      applyBranding();
+      updateStats();
+    }, function(err){ console.error(err); toast('Erreur de synchronisation des paramètres.'); });
+
+    const uMembers = db.collection('dahira_members').onSnapshot(function(snap){
+      state.members = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      renderMembers(document.getElementById('memberSearch').value);
+    }, function(err){ console.error(err); toast('Erreur de synchronisation des membres.'); });
+
+    const uXassida = db.collection('dahira_xassida').onSnapshot(function(snap){
+      state.xassida = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      renderXassida(document.getElementById('xassidaSearch').value);
+    }, function(err){ console.error(err); toast('Erreur de synchronisation des Xassida.'); });
+
+    unsubscribers = [uSettings, uMembers, uXassida];
+  }
+
+  function saveSettings(partial){
+    Object.assign(state, partial);
+    if (FIREBASE_ENABLED) {
+      db.collection('dahira').doc('settings').set({ name: state.name, logo: state.logo }, {merge:true})
+        .catch(function(){ toast('Erreur lors de l\u2019enregistrement (paramètres).'); });
+    } else {
+      persistLocalFallback();
+    }
+  }
 
   /* ---------- NAVIGATION ---------- */
   const pageTitles = { accueil:'Tableau de bord', membres:'Gestion des membres', xassida:'Registre des Xassida', stats:'Statistiques', parametres:'Paramètres' };
-  document.querySelectorAll('.menu-item[data-page]').forEach(btn=>{
+  document.querySelectorAll('.menu-item[data-page]').forEach(function(btn){
     btn.addEventListener('click', function(){
       const page = this.dataset.page;
-      document.querySelectorAll('.menu-item[data-page]').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.menu-item[data-page]').forEach(function(b){ b.classList.remove('active'); });
       this.classList.add('active');
-      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
       document.getElementById('page-'+page).classList.add('active');
       document.getElementById('pageTitle').textContent = pageTitles[page];
       document.getElementById('sidebar').classList.remove('open');
@@ -545,14 +665,14 @@
 
   function renderMembers(filter){
     filter = (filter||'').toLowerCase();
-    const rows = state.members.filter(m=>{
+    const rows = state.members.filter(function(m){
       if(!filter) return true;
       return [m.matricule,m.nom,m.prenom,m.tel].join(' ').toLowerCase().includes(filter);
     });
     if(rows.length === 0){
       memberTableBody.innerHTML = '<tr class="empty-row"><td colspan="8">Aucun membre trouvé.</td></tr>';
     } else {
-      memberTableBody.innerHTML = rows.map(m=>`
+      memberTableBody.innerHTML = rows.map(function(m){ return `
         <tr>
           <td>${escapeHtml(m.matricule)}</td>
           <td>${escapeHtml(m.nom)}</td>
@@ -565,10 +685,10 @@
             <button class="icon-btn" data-edit="${m.id}">✏️</button>
             <button class="icon-btn del" data-del="${m.id}">🗑️</button>
           </div></td>
-        </tr>`).join('');
+        </tr>`; }).join('');
     }
-    memberTableBody.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>editMember(b.dataset.edit)));
-    memberTableBody.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>deleteMember(b.dataset.del)));
+    memberTableBody.querySelectorAll('[data-edit]').forEach(function(b){ b.addEventListener('click', function(){ editMember(b.dataset.edit); }); });
+    memberTableBody.querySelectorAll('[data-del]').forEach(function(b){ b.addEventListener('click', function(){ deleteMember(b.dataset.del); }); });
     updateStats();
   }
 
@@ -581,7 +701,7 @@
   }
 
   function editMember(id){
-    const m = state.members.find(x=>x.id===id);
+    const m = state.members.find(function(x){ return x.id===id; });
     if(!m) return;
     document.getElementById('memberEditId').value = m.id;
     document.getElementById('mMatricule').value = m.matricule;
@@ -599,10 +719,16 @@
 
   function deleteMember(id){
     if(!confirm('Supprimer ce membre ?')) return;
-    state.members = state.members.filter(x=>x.id!==id);
-    persist();
-    renderMembers(document.getElementById('memberSearch').value);
-    toast('Membre supprimé.');
+    if (FIREBASE_ENABLED) {
+      db.collection('dahira_members').doc(id).delete()
+        .then(function(){ toast('Membre supprimé.'); })
+        .catch(function(){ toast('Erreur lors de la suppression.'); });
+    } else {
+      state.members = state.members.filter(function(x){ return x.id!==id; });
+      persistLocalFallback();
+      renderMembers(document.getElementById('memberSearch').value);
+      toast('Membre supprimé.');
+    }
   }
 
   memberForm.addEventListener('submit', function(e){
@@ -617,17 +743,25 @@
       date: document.getElementById('mDate').value,
       statut: document.getElementById('mStatut').value
     };
-    if(id){
-      const idx = state.members.findIndex(x=>x.id===id);
-      if(idx>-1) state.members[idx] = Object.assign({id}, data);
-      toast('Membre modifié avec succès.');
+    const finalId = id || uid();
+
+    if (FIREBASE_ENABLED) {
+      db.collection('dahira_members').doc(finalId).set(data)
+        .then(function(){ toast(id ? 'Membre modifié avec succès.' : 'Membre ajouté avec succès.'); resetMemberForm(); })
+        .catch(function(){ toast('Erreur lors de l\u2019enregistrement du membre.'); });
     } else {
-      state.members.push(Object.assign({id:uid()}, data));
-      toast('Membre ajouté avec succès.');
+      if(id){
+        const idx = state.members.findIndex(function(x){ return x.id===id; });
+        if(idx>-1) state.members[idx] = Object.assign({id}, data);
+        toast('Membre modifié avec succès.');
+      } else {
+        state.members.push(Object.assign({id:finalId}, data));
+        toast('Membre ajouté avec succès.');
+      }
+      persistLocalFallback();
+      resetMemberForm();
+      renderMembers(document.getElementById('memberSearch').value);
     }
-    persist();
-    resetMemberForm();
-    renderMembers(document.getElementById('memberSearch').value);
   });
   document.getElementById('memberCancelBtn').addEventListener('click', resetMemberForm);
   document.getElementById('memberSearch').addEventListener('input', function(){ renderMembers(this.value); });
@@ -638,14 +772,14 @@
 
   function renderXassida(filter){
     filter = (filter||'').toLowerCase();
-    const rows = state.xassida.filter(x=>{
+    const rows = state.xassida.filter(function(x){
       if(!filter) return true;
       return [x.nom,x.lecteur,x.lieu].join(' ').toLowerCase().includes(filter);
     });
     if(rows.length === 0){
       xassidaTableBody.innerHTML = '<tr class="empty-row"><td colspan="8">Aucun Xassida enregistré.</td></tr>';
     } else {
-      xassidaTableBody.innerHTML = rows.map((x,i)=>`
+      xassidaTableBody.innerHTML = rows.map(function(x,i){ return `
         <tr>
           <td>${i+1}</td>
           <td>${escapeHtml(x.nom)}</td>
@@ -658,10 +792,10 @@
             <button class="icon-btn" data-edit="${x.id}">✏️</button>
             <button class="icon-btn del" data-del="${x.id}">🗑️</button>
           </div></td>
-        </tr>`).join('');
+        </tr>`; }).join('');
     }
-    xassidaTableBody.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>editXassida(b.dataset.edit)));
-    xassidaTableBody.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>deleteXassida(b.dataset.del)));
+    xassidaTableBody.querySelectorAll('[data-edit]').forEach(function(b){ b.addEventListener('click', function(){ editXassida(b.dataset.edit); }); });
+    xassidaTableBody.querySelectorAll('[data-del]').forEach(function(b){ b.addEventListener('click', function(){ deleteXassida(b.dataset.del); }); });
     updateStats();
   }
 
@@ -674,7 +808,7 @@
   }
 
   function editXassida(id){
-    const x = state.xassida.find(v=>v.id===id);
+    const x = state.xassida.find(function(v){ return v.id===id; });
     if(!x) return;
     document.getElementById('xEditId').value = x.id;
     document.getElementById('xNom').value = x.nom;
@@ -691,10 +825,16 @@
 
   function deleteXassida(id){
     if(!confirm('Supprimer cet enregistrement ?')) return;
-    state.xassida = state.xassida.filter(x=>x.id!==id);
-    persist();
-    renderXassida(document.getElementById('xassidaSearch').value);
-    toast('Xassida supprimé.');
+    if (FIREBASE_ENABLED) {
+      db.collection('dahira_xassida').doc(id).delete()
+        .then(function(){ toast('Xassida supprimé.'); })
+        .catch(function(){ toast('Erreur lors de la suppression.'); });
+    } else {
+      state.xassida = state.xassida.filter(function(x){ return x.id!==id; });
+      persistLocalFallback();
+      renderXassida(document.getElementById('xassidaSearch').value);
+      toast('Xassida supprimé.');
+    }
   }
 
   xassidaForm.addEventListener('submit', function(e){
@@ -708,17 +848,25 @@
       lieu: document.getElementById('xLieu').value.trim(),
       obs: document.getElementById('xObs').value.trim()
     };
-    if(id){
-      const idx = state.xassida.findIndex(x=>x.id===id);
-      if(idx>-1) state.xassida[idx] = Object.assign({id}, data);
-      toast('Xassida modifié avec succès.');
+    const finalId = id || uid();
+
+    if (FIREBASE_ENABLED) {
+      db.collection('dahira_xassida').doc(finalId).set(data)
+        .then(function(){ toast(id ? 'Xassida modifié avec succès.' : 'Xassida ajouté avec succès.'); resetXassidaForm(); })
+        .catch(function(){ toast('Erreur lors de l\u2019enregistrement du Xassida.'); });
     } else {
-      state.xassida.push(Object.assign({id:uid()}, data));
-      toast('Xassida ajouté avec succès.');
+      if(id){
+        const idx = state.xassida.findIndex(function(x){ return x.id===id; });
+        if(idx>-1) state.xassida[idx] = Object.assign({id}, data);
+        toast('Xassida modifié avec succès.');
+      } else {
+        state.xassida.push(Object.assign({id:finalId}, data));
+        toast('Xassida ajouté avec succès.');
+      }
+      persistLocalFallback();
+      resetXassidaForm();
+      renderXassida(document.getElementById('xassidaSearch').value);
     }
-    persist();
-    resetXassidaForm();
-    renderXassida(document.getElementById('xassidaSearch').value);
   });
   document.getElementById('xassidaCancelBtn').addEventListener('click', resetXassidaForm);
   document.getElementById('xassidaSearch').addEventListener('input', function(){ renderXassida(this.value); });
@@ -728,8 +876,8 @@
     const totalMembers = state.members.length;
     const totalXassida = state.xassida.length;
     const totalSeances = state.xassida.length;
-    const activeMembers = state.members.filter(m=>m.statut==='Actif').length;
-    const totalParticipants = state.xassida.reduce((s,x)=>s+(x.participants||0),0);
+    const activeMembers = state.members.filter(function(m){ return m.statut==='Actif'; }).length;
+    const totalParticipants = state.xassida.reduce(function(s,x){ return s+(x.participants||0); },0);
 
     document.getElementById('statMembers').textContent = pad(totalMembers);
     document.getElementById('statXassida').textContent = pad(totalXassida);
@@ -756,26 +904,25 @@
     const blueLight = getComputedStyle(document.documentElement).getPropertyValue('--blue-500').trim() || '#2E7BD6';
     const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink-soft').trim() || '#4A5A78';
 
-    // Members evolution by registration month (cumulative)
     const byMonth = {};
-    state.members.slice().sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(m=>{
+    state.members.slice().sort(function(a,b){ return new Date(a.date)-new Date(b.date); }).forEach(function(m){
       const lbl = monthLabel(m.date);
       if(lbl) byMonth[lbl] = (byMonth[lbl]||0) + 1;
     });
     const memberLabels = Object.keys(byMonth);
     let running = 0;
-    const memberCumulative = memberLabels.map(l => running += byMonth[l]);
+    const memberCumulative = memberLabels.map(function(l){ return running += byMonth[l]; });
 
     const xassidaByMonth = {};
-    state.xassida.forEach(x=>{
+    state.xassida.forEach(function(x){
       const lbl = monthLabel(x.date);
       if(lbl) xassidaByMonth[lbl] = (xassidaByMonth[lbl]||0) + 1;
     });
     const xLabels = Object.keys(xassidaByMonth);
-    const xCounts = xLabels.map(l=>xassidaByMonth[l]);
+    const xCounts = xLabels.map(function(l){ return xassidaByMonth[l]; });
 
-    const partLabels = state.xassida.map(x=>x.nom || 'Séance');
-    const partCounts = state.xassida.map(x=>x.participants||0);
+    const partLabels = state.xassida.map(function(x){ return x.nom || 'Séance'; });
+    const partCounts = state.xassida.map(function(x){ return x.participants||0; });
 
     const commonOpts = { responsive:true, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ color: ink, font:{size:10} }, grid:{ display:false } }, y:{ beginAtZero:true, ticks:{ color: ink } } } };
 
@@ -816,8 +963,7 @@
   document.getElementById('logoSaveBtn').addEventListener('click', function(){
     const preview = document.getElementById('settingsLogoPreview');
     if(preview.dataset.pending){
-      state.logo = preview.dataset.pending;
-      persist();
+      saveSettings({ logo: preview.dataset.pending });
       delete preview.dataset.pending;
       applyBranding();
       toast('Logo enregistré.');
@@ -826,8 +972,7 @@
     }
   });
   document.getElementById('logoResetBtn').addEventListener('click', function(){
-    state.logo = null;
-    persist();
+    saveSettings({ logo: null });
     document.getElementById('logoInput').value = '';
     applyBranding();
     const preview = document.getElementById('settingsLogoPreview');
@@ -838,8 +983,7 @@
   document.getElementById('saveNameBtn').addEventListener('click', function(){
     const val = document.getElementById('dahiraNameInput').value.trim();
     if(!val) return;
-    state.name = val;
-    persist();
+    saveSettings({ name: val });
     applyBranding();
     toast('Nom du Dahira enregistré.');
   });
@@ -848,15 +992,33 @@
     const n = document.getElementById('newCode').value;
     const c = document.getElementById('confirmCode').value;
     const msg = document.getElementById('codeMsg');
-    if(!n || n.length < 4){ msg.textContent = 'Le code doit contenir au moins 4 caractères.'; return; }
+    msg.style.color = 'var(--danger)';
+    if(!n || n.length < 6){ msg.textContent = 'Le code doit contenir au moins 6 caractères.'; return; }
     if(n !== c){ msg.textContent = 'Les deux codes ne correspondent pas.'; return; }
-    state.code = n;
-    persist();
-    msg.style.color = 'var(--success)';
-    msg.textContent = 'Code d\u2019accès mis à jour avec succès.';
-    document.getElementById('newCode').value = '';
-    document.getElementById('confirmCode').value = '';
-    toast('Code d\u2019accès modifié.');
+
+    if (FIREBASE_ENABLED) {
+      const user = auth.currentUser;
+      if(!user){ msg.textContent = 'Session expirée, reconnectez-vous.'; return; }
+      user.updatePassword(n).then(function(){
+        msg.style.color = 'var(--success)';
+        msg.textContent = 'Code d\u2019accès mis à jour avec succès.';
+        document.getElementById('newCode').value = '';
+        document.getElementById('confirmCode').value = '';
+        toast('Code d\u2019accès modifié.');
+      }).catch(function(err){
+        msg.textContent = err.code === 'auth/requires-recent-login'
+          ? 'Reconnectez-vous puis réessayez pour modifier le code.'
+          : 'Erreur : ' + err.message;
+      });
+    } else {
+      state.code = n;
+      persistLocalFallback();
+      msg.style.color = 'var(--success)';
+      msg.textContent = 'Code d\u2019accès mis à jour avec succès.';
+      document.getElementById('newCode').value = '';
+      document.getElementById('confirmCode').value = '';
+      toast('Code d\u2019accès modifié.');
+    }
   });
 
   document.getElementById('exportBtn').addEventListener('click', function(){
@@ -873,7 +1035,7 @@
   /* ---------- HELPERS ---------- */
   function escapeHtml(str){
     if(str===undefined||str===null) return '';
-    return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+    return String(str).replace(/[&<>"']/g, function(s){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]; });
   }
   function formatDate(d){
     if(!d) return '—';
@@ -889,7 +1051,7 @@
     updateStats();
   }
 
-  tryEnter();
+  tryEnterLocal();
 })();
 </script>
 </body>
