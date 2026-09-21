@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nouroudareyni Touba Tivaouane</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --blue-900:#0B3D91;
+    --blue-800:#0E4AAE;
+    --blue-700:#1656B0;
+    --blue-600:#1E63C9;
+    --blue-500:#2E7BD6;
+    --blue-100:#E8F1FC;
+    --blue-50:#F4F8FE;
+    --ink:#10213D;
+    --ink-soft:#4A5A78;
+    --white:#FFFFFF;
+    --border:#D9E5F7;
+    --danger:#C0392B;
+    --success:#1E8E5A;
+    --radius:10px;
+    --shadow:0 2px 10px rgba(11,61,145,.08);
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --blue-50:#0B1830; --white:#0F2038; --border:#1E3357; --ink:#EAF1FF; --ink-soft:#AEC1E5; --blue-100:#132A4D;
+    }
+  }
+  :root[data-theme="dark"] {
+    --blue-50:#0B1830; --white:#0F2038; --border:#1E3357; --ink:#EAF1FF; --ink-soft:#AEC1E5; --blue-100:#132A4D;
+  }
+  * { box-sizing:border-box; }
+  html,body { height:100%; margin:0; }
+  html { scroll-padding-top:env(safe-area-inset-top,0px); }
+  body {
+    font-family:'Inter',sans-serif;
+    background:var(--blue-50);
+    color:var(--ink);
+    min-height:100%;
+  }
+  img { max-width:100%; }
+  button { font-family:inherit; cursor:pointer; }
+  input, select { font-family:inherit; }
+
+  /* ---------- LOGIN ---------- */
+  #loginScreen {
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 15% 20%, var(--blue-700) 0%, transparent 45%),
+      radial-gradient(circle at 85% 80%, var(--blue-500) 0%, transparent 45%),
+      linear-gradient(160deg, var(--blue-900), var(--blue-700));
+    padding:24px;
+  }
+  .login-card {
+    background:var(--white);
+    border-radius:16px;
+    padding:40px 32px;
+    width:100%;
+    max-width:380px;
+    box-shadow:0 20px 60px rgba(0,20,60,.35);
+    text-align:center;
+  }
+  .login-logo {
+    width:84px; height:84px; border-radius:50%;
+    background:var(--blue-100);
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 18px;
+    overflow:hidden;
+    border:2px solid var(--blue-100);
+  }
+  .login-logo img { width:100%; height:100%; object-fit:cover; }
+  .login-logo svg { width:44px; height:44px; }
+  .brand-title {
+    font-family:'Amiri', serif;
+    font-weight:700;
+    font-size:1.5rem;
+    color:var(--blue-900);
+    line-height:1.25;
+    margin:0 0 4px;
+  }
+  .brand-sub {
+    color:var(--ink-soft);
+    font-size:.85rem;
+    margin:0 0 22px;
+    letter-spacing:.02em;
+  }
+  .login-msg {
+    background:var(--blue-100);
+    color:var(--blue-800);
+    font-size:.82rem;
+    border-radius:8px;
+    padding:10px 12px;
+    margin-bottom:20px;
+  }
+  .field { text-align:left; margin-bottom:16px; }
+  .field label { display:block; font-size:.8rem; font-weight:600; color:var(--ink); margin-bottom:6px; }
+  .field input, .field select {
+    width:100%; padding:11px 13px; border:1.5px solid var(--border); border-radius:8px;
+    font-size:.95rem; background:var(--white); color:var(--ink); outline:none;
+    transition:border-color .15s;
+  }
+  .field input:focus, .field select:focus { border-color:var(--blue-500); }
+  .btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    border:none; border-radius:8px; padding:11px 18px; font-weight:600; font-size:.9rem;
+    transition:transform .08s, box-shadow .15s, background .15s;
+  }
+  .btn:active { transform:translateY(1px); }
+  .btn-primary { background:var(--blue-700); color:#fff; width:100%; }
+  .btn-primary:hover { background:var(--blue-800); }
+  .btn-outline { background:transparent; color:var(--blue-700); border:1.5px solid var(--blue-200,var(--border)); }
+  .btn-outline:hover { background:var(--blue-100); }
+  .btn-danger { background:var(--danger); color:#fff; }
+  .btn-sm { padding:6px 10px; font-size:.78rem; border-radius:6px; }
+  .error-msg { color:var(--danger); font-size:.82rem; margin-top:10px; min-height:18px; font-weight:600; }
+
+  /* ---------- APP SHELL ---------- */
+  #app { display:none; min-height:100vh; }
+  .shell { display:flex; min-height:100vh; }
+  .sidebar {
+    width:250px; flex-shrink:0;
+    background:linear-gradient(180deg, var(--blue-900), var(--blue-700));
+    color:#fff;
+    padding:22px 16px;
+    display:flex; flex-direction:column;
+    position:sticky; top:0; height:100vh;
+  }
+  .sidebar-brand { display:flex; align-items:center; gap:10px; padding:0 6px 20px; border-bottom:1px solid rgba(255,255,255,.18); margin-bottom:18px; }
+  .sidebar-logo { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
+  .sidebar-logo img { width:100%; height:100%; object-fit:cover; }
+  .sidebar-logo svg { width:22px; height:22px; }
+  .sidebar-brand-text { font-family:'Amiri',serif; font-weight:700; font-size:.92rem; line-height:1.2; }
+  nav.menu { display:flex; flex-direction:column; gap:3px; flex:1; }
+  .menu-item {
+    display:flex; align-items:center; gap:11px;
+    padding:11px 12px; border-radius:8px; color:rgba(255,255,255,.82);
+    font-size:.88rem; font-weight:500; background:none; border:none; text-align:left; width:100%;
+  }
+  .menu-item .ic { font-size:1.05rem; width:20px; text-align:center; }
+  .menu-item:hover { background:rgba(255,255,255,.08); color:#fff; }
+  .menu-item.active { background:#fff; color:var(--blue-800); font-weight:700; }
+  .menu-footer { border-top:1px solid rgba(255,255,255,.18); padding-top:12px; margin-top:8px; }
+
+  .main { flex:1; min-width:0; padding:24px 28px 48px; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:10px; }
+  .topbar h1 { font-family:'Amiri',serif; font-size:1.5rem; color:var(--blue-900); margin:0; }
+  .topbar .date { color:var(--ink-soft); font-size:.85rem; }
+  .menu-toggle { display:none; background:var(--blue-700); color:#fff; border:none; border-radius:8px; padding:8px 11px; font-size:1rem; }
+
+  .page { display:none; }
+  .page.active { display:block; }
+
+  .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:16px; margin-bottom:26px; }
+  .stat-card {
+    background:var(--white); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px 20px; box-shadow:var(--shadow);
+  }
+  .stat-card .label { font-size:.78rem; color:var(--ink-soft); font-weight:600; margin-bottom:8px; }
+  .stat-card .value { font-size:2rem; font-weight:800; color:var(--blue-800); font-family:'Amiri',serif; }
+
+  .panel { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:22px; margin-bottom:22px; }
+  .panel h2 { font-size:1.05rem; color:var(--blue-900); margin:0 0 16px; font-family:'Amiri',serif; }
+  .panel h3 { font-size:.92rem; color:var(--blue-800); margin:0 0 12px; }
+
+  .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:16px; }
+  .form-actions { display:flex; gap:10px; flex-wrap:wrap; }
+
+  .toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .search-box { position:relative; flex:1; min-width:200px; max-width:340px; }
+  .search-box input { width:100%; padding:9px 12px 9px 34px; border:1.5px solid var(--border); border-radius:8px; font-size:.87rem; background:var(--white); color:var(--ink); }
+  .search-box .ic { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--ink-soft); font-size:.85rem; }
+
+  .table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:8px; }
+  table { border-collapse:collapse; width:100%; min-width:640px; font-size:.85rem; }
+  thead th { background:var(--blue-100); color:var(--blue-900); text-align:left; padding:10px 12px; font-weight:700; white-space:nowrap; }
+  tbody td { padding:10px 12px; border-top:1px solid var(--border); color:var(--ink); }
+  tbody tr:hover { background:var(--blue-50); }
+  .badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:.72rem; font-weight:700; }
+  .badge.actif { background:#E4F6EC; color:var(--success); }
+  .badge.inactif { background:#FCE9E7; color:var(--danger); }
+  .row-actions { display:flex; gap:6px; }
+  .icon-btn { border:1px solid var(--border); background:var(--white); border-radius:6px; padding:5px 8px; font-size:.8rem; color:var(--blue-700); }
+  .icon-btn.del { color:var(--danger); }
+  .empty-row td { text-align:center; color:var(--ink-soft); padding:24px; font-style:italic; }
+
+  .charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px; }
+  .chart-box { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); }
+  .chart-box canvas { max-height:260px; }
+
+  .logo-drop {
+    border:2px dashed var(--border); border-radius:10px; padding:20px; text-align:center; background:var(--blue-50);
+  }
+  .logo-preview { width:88px; height:88px; border-radius:50%; margin:0 auto 12px; background:var(--white); border:2px solid var(--border); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .logo-preview img { width:100%; height:100%; object-fit:cover; }
+
+  .settings-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:18px; }
+  .toast {
+    position:fixed; bottom:calc(20px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%) translateY(16px);
+    background:var(--blue-900); color:#fff; padding:11px 20px; border-radius:8px; font-size:.85rem; font-weight:600;
+    box-shadow:0 8px 24px rgba(0,20,60,.3); opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:999;
+  }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  @media (max-width:860px) {
+    .sidebar { position:fixed; z-index:50; left:0; top:0; transform:translateX(-100%); transition:transform .2s; box-shadow:0 0 30px rgba(0,0,0,.3); }
+    .sidebar.open { transform:translateX(0); }
+    .menu-toggle { display:inline-flex; }
+    .main { padding:16px 14px 40px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo" id="loginLogoBox">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#0B3D91" stroke-width="1.6"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M12 3v18M4.5 7.5l7.5 4.5 7.5-4.5"/></svg>
+    </div>
+    <p class="brand-title">NOUROUDAREYNI<br>TOUBA TIVAOUANE</p>
+    <p class="brand-sub">Plateforme de gestion du Dahira</p>
+    <div class="login-msg">Accès réservé aux membres autorisés</div>
+    <form id="loginForm">
+      <div class="field">
+        <label for="loginCode">Code d'accès</label>
+        <input type="password" id="loginCode" autocomplete="off" placeholder="Entrez le code d'accès" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Se connecter</button>
+      <div class="error-msg" id="loginError"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app">
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo" id="sideLogoBox">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M12 3v18M4.5 7.5l7.5 4.5 7.5-4.5"/></svg>
+        </div>
+        <div class="sidebar-brand-text" id="sideBrandText">NOUROUDAREYNI<br>TOUBA TIVAOUANE</div>
+      </div>
+      <nav class="menu">
+        <button class="menu-item active" data-page="accueil"><span class="ic">🏠</span>Accueil</button>
+        <button class="menu-item" data-page="membres"><span class="ic">👥</span>Membres</button>
+        <button class="menu-item" data-page="xassida"><span class="ic">📖</span>Xassida</button>
+        <button class="menu-item" data-page="stats"><span class="ic">📊</span>Statistiques</button>
+        <button class="menu-item" data-page="parametres"><span class="ic">⚙️</span>Paramètres</button>
+      </nav>
+      <div class="menu-footer">
+        <button class="menu-item" id="logoutBtn"><span class="ic">🔒</span>Déconnexion</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="menu-toggle" id="menuToggle">☰</button>
+          <h1 id="pageTitle">Tableau de bord</h1>
+        </div>
+        <div class="date" id="todayDate"></div>
+      </div>
+
+      <!-- ACCUEIL / DASHBOARD -->
+      <section class="page active" id="page-accueil">
+        <div class="stat-grid">
+          <div class="stat-card"><div class="label">Nombre total de membres</div><div class="value" id="statMembers">000</div></div>
+          <div class="stat-card"><div class="label">Nombre de Xassida enregistrés</div><div class="value" id="statXassida">000</div></div>
+          <div class="stat-card"><div class="label">Nombre de séances</div><div class="value" id="statSeances">000</div></div>
+          <div class="stat-card"><div class="label">Membres actifs</div><div class="value" id="statActive">000</div></div>
+        </div>
+        <div class="panel">
+          <h2>Bienvenue</h2>
+          <p style="color:var(--ink-soft);font-size:.9rem;line-height:1.6;margin:0;">
+            Utilisez le menu à gauche pour gérer les membres, enregistrer les séances de Xassida,
+            consulter les statistiques du Dahira ou ajuster les paramètres de la plateforme.
+          </p>
+        </div>
+      </section>
+
+      <!-- MEMBRES -->
+      <section class="page" id="page-membres">
+        <div class="panel">
+          <h2 id="memberFormTitle">Ajouter un membre</h2>
+          <form id="memberForm">
+            <input type="hidden" id="memberEditId">
+            <div class="form-grid">
+              <div class="field"><label>Matricule</label><input type="text" id="mMatricule" required></div>
+              <div class="field"><label>Nom</label><input type="text" id="mNom" required></div>
+              <div class="field"><label>Prénom</label><input type="text" id="mPrenom" required></div>
+              <div class="field"><label>Numéro de téléphone</label><input type="tel" id="mTel" required></div>
+              <div class="field"><label>Adresse</label><input type="text" id="mAdresse"></div>
+              <div class="field"><label>Date d'inscription</label><input type="date" id="mDate" required></div>
+              <div class="field"><label>Statut</label>
+                <select id="mStatut"><option value="Actif">Actif</option><option value="Inactif">Inactif</option></select>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" style="width:auto;" id="memberSubmitBtn">Ajouter</button>
+              <button type="button" class="btn btn-outline" id="memberCancelBtn" style="display:none;">Annuler</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="toolbar">
+            <h3 style="margin:0;">Liste des membres</h3>
+            <div class="search-box"><span class="ic">🔎</span><input type="text" id="memberSearch" placeholder="Rechercher par nom, prénom, matricule, téléphone…"></div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Téléphone</th><th>Adresse</th><th>Date d'inscription</th><th>Statut</th><th>Actions</th></tr></thead>
+              <tbody id="memberTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- XASSIDA -->
+      <section class="page" id="page-xassida">
+        <div class="panel">
+          <h2 id="xassidaFormTitle">Ajouter un Xassida</h2>
+          <form id="xassidaForm">
+            <input type="hidden" id="xEditId">
+            <div class="form-grid">
+              <div class="field"><label>Nom du Xassida</label><input type="text" id="xNom" required></div>
+              <div class="field"><label>Date de lecture</label><input type="date" id="xDate" required></div>
+              <div class="field"><label>Lecteur / Groupe</label><input type="text" id="xLecteur" required></div>
+              <div class="field"><label>Nombre de participants</label><input type="number" id="xParticipants" min="0" required></div>
+              <div class="field"><label>Lieu</label><input type="text" id="xLieu"></div>
+              <div class="field"><label>Observations</label><input type="text" id="xObs"></div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" style="width:auto;" id="xassidaSubmitBtn">+ Ajouter un Xassida</button>
+              <button type="button" class="btn btn-outline" id="xassidaCancelBtn" style="display:none;">Annuler</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="toolbar">
+            <h3 style="margin:0;">Registre des Xassida</h3>
+            <div class="search-box"><span class="ic">🔎</span><input type="text" id="xassidaSearch" placeholder="Rechercher par nom, lecteur, lieu…"></div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>N°</th><th>Nom du Xassida</th><th>Date</th><th>Lecteur/Groupe</th><th>Participants</th><th>Lieu</th><th>Observations</th><th>Actions</th></tr></thead>
+              <tbody id="xassidaTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- STATISTIQUES -->
+      <section class="page" id="page-stats">
+        <div class="stat-grid">
+          <div class="stat-card"><div class="label">Nombre total de membres</div><div class="value" id="s2Members">000</div></div>
+          <div class="stat-card"><div class="label">Nombre de Xassida lus</div><div class="value" id="s2Xassida">000</div></div>
+          <div class="stat-card"><div class="label">Nombre de séances</div><div class="value" id="s2Seances">000</div></div>
+          <div class="stat-card"><div class="label">Nombre de participants</div><div class="value" id="s2Participants">000</div></div>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-box"><h3>Évolution du nombre de membres</h3><canvas id="chartMembers"></canvas></div>
+          <div class="chart-box"><h3>Xassida lus par mois</h3><canvas id="chartXassidaMonth"></canvas></div>
+          <div class="chart-box"><h3>Participants par séance</h3><canvas id="chartParticipants"></canvas></div>
+        </div>
+      </section>
+
+      <!-- PARAMETRES -->
+      <section class="page" id="page-parametres">
+        <div class="settings-grid">
+          <div class="panel">
+            <h2>Logo du Dahira</h2>
+            <div class="logo-drop">
+              <div class="logo-preview" id="settingsLogoPreview">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#0B3D91" stroke-width="1.6" width="40" height="40"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M12 3v18M4.5 7.5l7.5 4.5 7.5-4.5"/></svg>
+              </div>
+              <input type="file" id="logoInput" accept="image/*" style="margin-bottom:10px;">
+              <div class="form-actions" style="justify-content:center;">
+                <button class="btn btn-outline btn-sm" id="logoSaveBtn">Enregistrer le logo</button>
+                <button class="btn btn-outline btn-sm" id="logoResetBtn">Réinitialiser</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2>Nom du Dahira</h2>
+            <div class="field"><label>Nom affiché</label><input type="text" id="dahiraNameInput"></div>
+            <button class="btn btn-primary" style="width:auto;" id="saveNameBtn">Enregistrer le nom</button>
+          </div>
+
+          <div class="panel">
+            <h2>Code d'accès</h2>
+            <div class="field"><label>Nouveau code d'accès</label><input type="password" id="newCode"></div>
+            <div class="field"><label>Confirmer le code</label><input type="password" id="confirmCode"></div>
+            <button class="btn btn-primary" style="width:auto;" id="saveCodeBtn">Modifier le code d'accès</button>
+            <div class="error-msg" id="codeMsg"></div>
+          </div>
+
+          <div class="panel">
+            <h2>Données</h2>
+            <p style="color:var(--ink-soft);font-size:.85rem;">Exporter l'ensemble des données du Dahira (membres, Xassida) au format JSON.</p>
+            <button class="btn btn-outline" id="exportBtn">⭳ Exporter les données</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  const DEFAULTS = {
+    code: "nourou2026",
+    name: "NOUROUDAREYNI TOUBA TIVAOUANE",
+    logo: null,
+    members: [],
+    xassida: []
+  };
+
+  function loadJSON(key, fallback){
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+    catch(e){ return fallback; }
+  }
+  function save(key, val){
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch(e){}
+  }
+
+  let state = {
+    code: loadJSON('dahira_code', DEFAULTS.code),
+    name: loadJSON('dahira_name', DEFAULTS.name),
+    logo: loadJSON('dahira_logo', DEFAULTS.logo),
+    members: loadJSON('dahira_members', DEFAULTS.members),
+    xassida: loadJSON('dahira_xassida', DEFAULTS.xassida)
+  };
+
+  function persist(){
+    save('dahira_code', state.code);
+    save('dahira_name', state.name);
+    save('dahira_logo', state.logo);
+    save('dahira_members', state.members);
+    save('dahira_xassida', state.xassida);
+  }
+
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(()=>t.classList.remove('show'), 2200);
+  }
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  /* ---------- BRANDING ---------- */
+  function applyBranding(){
+    document.querySelectorAll('#sideBrandText').forEach(el => el.textContent = state.name);
+    document.querySelectorAll('.brand-title').forEach(el => el.innerHTML = state.name.replace(/\s+/g,' ').trim().split(' ').join('<br>').length > 40 ? state.name : state.name);
+    document.title = state.name;
+    const logoBoxes = [document.getElementById('loginLogoBox'), document.getElementById('sideLogoBox'), document.getElementById('settingsLogoPreview')];
+    logoBoxes.forEach(box=>{
+      if(!box) return;
+      if(state.logo){
+        box.innerHTML = '<img src="'+state.logo+'" alt="Logo du Dahira">';
+      }
+    });
+    document.getElementById('dahiraNameInput').value = state.name;
+  }
+
+  /* ---------- LOGIN ---------- */
+  const loginForm = document.getElementById('loginForm');
+  const loginScreen = document.getElementById('loginScreen');
+  const appEl = document.getElementById('app');
+
+  function tryEnter(){
+    if(sessionStorage.getItem('dahira_session') === '1'){
+      loginScreen.style.display = 'none';
+      appEl.style.display = 'block';
+      renderAll();
+    }
+  }
+
+  loginForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const val = document.getElementById('loginCode').value;
+    const errEl = document.getElementById('loginError');
+    if(val === state.code){
+      sessionStorage.setItem('dahira_session','1');
+      errEl.textContent = '';
+      loginScreen.style.display = 'none';
+      appEl.style.display = 'block';
+      renderAll();
+    } else {
+      errEl.textContent = "Code incorrect. Accès refusé. Veuillez réessayer.";
+      document.getElementById('loginCode').value = '';
+    }
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', function(){
+    sessionStorage.removeItem('dahira_session');
+    appEl.style.display = 'none';
+    loginScreen.style.display = 'flex';
+    document.getElementById('loginCode').value = '';
+  });
+
+  /* ---------- NAVIGATION ---------- */
+  const pageTitles = { accueil:'Tableau de bord', membres:'Gestion des membres', xassida:'Registre des Xassida', stats:'Statistiques', parametres:'Paramètres' };
+  document.querySelectorAll('.menu-item[data-page]').forEach(btn=>{
+    btn.addEventListener('click', function(){
+      const page = this.dataset.page;
+      document.querySelectorAll('.menu-item[data-page]').forEach(b=>b.classList.remove('active'));
+      this.classList.add('active');
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      document.getElementById('page-'+page).classList.add('active');
+      document.getElementById('pageTitle').textContent = pageTitles[page];
+      document.getElementById('sidebar').classList.remove('open');
+      if(page === 'stats') renderCharts();
+    });
+  });
+  document.getElementById('menuToggle').addEventListener('click', function(){
+    document.getElementById('sidebar').classList.toggle('open');
+  });
+
+  const today = new Date();
+  document.getElementById('todayDate').textContent = today.toLocaleDateString('fr-FR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  /* ---------- MEMBRES ---------- */
+  const memberForm = document.getElementById('memberForm');
+  const memberTableBody = document.getElementById('memberTableBody');
+
+  function renderMembers(filter){
+    filter = (filter||'').toLowerCase();
+    const rows = state.members.filter(m=>{
+      if(!filter) return true;
+      return [m.matricule,m.nom,m.prenom,m.tel].join(' ').toLowerCase().includes(filter);
+    });
+    if(rows.length === 0){
+      memberTableBody.innerHTML = '<tr class="empty-row"><td colspan="8">Aucun membre trouvé.</td></tr>';
+    } else {
+      memberTableBody.innerHTML = rows.map(m=>`
+        <tr>
+          <td>${escapeHtml(m.matricule)}</td>
+          <td>${escapeHtml(m.nom)}</td>
+          <td>${escapeHtml(m.prenom)}</td>
+          <td>${escapeHtml(m.tel)}</td>
+          <td>${escapeHtml(m.adresse||'—')}</td>
+          <td>${formatDate(m.date)}</td>
+          <td><span class="badge ${m.statut==='Actif'?'actif':'inactif'}">${m.statut}</span></td>
+          <td><div class="row-actions">
+            <button class="icon-btn" data-edit="${m.id}">✏️</button>
+            <button class="icon-btn del" data-del="${m.id}">🗑️</button>
+          </div></td>
+        </tr>`).join('');
+    }
+    memberTableBody.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>editMember(b.dataset.edit)));
+    memberTableBody.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>deleteMember(b.dataset.del)));
+    updateStats();
+  }
+
+  function resetMemberForm(){
+    memberForm.reset();
+    document.getElementById('memberEditId').value = '';
+    document.getElementById('memberFormTitle').textContent = 'Ajouter un membre';
+    document.getElementById('memberSubmitBtn').textContent = 'Ajouter';
+    document.getElementById('memberCancelBtn').style.display = 'none';
+  }
+
+  function editMember(id){
+    const m = state.members.find(x=>x.id===id);
+    if(!m) return;
+    document.getElementById('memberEditId').value = m.id;
+    document.getElementById('mMatricule').value = m.matricule;
+    document.getElementById('mNom').value = m.nom;
+    document.getElementById('mPrenom').value = m.prenom;
+    document.getElementById('mTel').value = m.tel;
+    document.getElementById('mAdresse').value = m.adresse||'';
+    document.getElementById('mDate').value = m.date;
+    document.getElementById('mStatut').value = m.statut;
+    document.getElementById('memberFormTitle').textContent = 'Modifier le membre';
+    document.getElementById('memberSubmitBtn').textContent = 'Modifier';
+    document.getElementById('memberCancelBtn').style.display = 'inline-flex';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  function deleteMember(id){
+    if(!confirm('Supprimer ce membre ?')) return;
+    state.members = state.members.filter(x=>x.id!==id);
+    persist();
+    renderMembers(document.getElementById('memberSearch').value);
+    toast('Membre supprimé.');
+  }
+
+  memberForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const id = document.getElementById('memberEditId').value;
+    const data = {
+      matricule: document.getElementById('mMatricule').value.trim(),
+      nom: document.getElementById('mNom').value.trim(),
+      prenom: document.getElementById('mPrenom').value.trim(),
+      tel: document.getElementById('mTel').value.trim(),
+      adresse: document.getElementById('mAdresse').value.trim(),
+      date: document.getElementById('mDate').value,
+      statut: document.getElementById('mStatut').value
+    };
+    if(id){
+      const idx = state.members.findIndex(x=>x.id===id);
+      if(idx>-1) state.members[idx] = Object.assign({id}, data);
+      toast('Membre modifié avec succès.');
+    } else {
+      state.members.push(Object.assign({id:uid()}, data));
+      toast('Membre ajouté avec succès.');
+    }
+    persist();
+    resetMemberForm();
+    renderMembers(document.getElementById('memberSearch').value);
+  });
+  document.getElementById('memberCancelBtn').addEventListener('click', resetMemberForm);
+  document.getElementById('memberSearch').addEventListener('input', function(){ renderMembers(this.value); });
+
+  /* ---------- XASSIDA ---------- */
+  const xassidaForm = document.getElementById('xassidaForm');
+  const xassidaTableBody = document.getElementById('xassidaTableBody');
+
+  function renderXassida(filter){
+    filter = (filter||'').toLowerCase();
+    const rows = state.xassida.filter(x=>{
+      if(!filter) return true;
+      return [x.nom,x.lecteur,x.lieu].join(' ').toLowerCase().includes(filter);
+    });
+    if(rows.length === 0){
+      xassidaTableBody.innerHTML = '<tr class="empty-row"><td colspan="8">Aucun Xassida enregistré.</td></tr>';
+    } else {
+      xassidaTableBody.innerHTML = rows.map((x,i)=>`
+        <tr>
+          <td>${i+1}</td>
+          <td>${escapeHtml(x.nom)}</td>
+          <td>${formatDate(x.date)}</td>
+          <td>${escapeHtml(x.lecteur)}</td>
+          <td>${x.participants}</td>
+          <td>${escapeHtml(x.lieu||'—')}</td>
+          <td>${escapeHtml(x.obs||'—')}</td>
+          <td><div class="row-actions">
+            <button class="icon-btn" data-edit="${x.id}">✏️</button>
+            <button class="icon-btn del" data-del="${x.id}">🗑️</button>
+          </div></td>
+        </tr>`).join('');
+    }
+    xassidaTableBody.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>editXassida(b.dataset.edit)));
+    xassidaTableBody.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>deleteXassida(b.dataset.del)));
+    updateStats();
+  }
+
+  function resetXassidaForm(){
+    xassidaForm.reset();
+    document.getElementById('xEditId').value = '';
+    document.getElementById('xassidaFormTitle').textContent = 'Ajouter un Xassida';
+    document.getElementById('xassidaSubmitBtn').textContent = '+ Ajouter un Xassida';
+    document.getElementById('xassidaCancelBtn').style.display = 'none';
+  }
+
+  function editXassida(id){
+    const x = state.xassida.find(v=>v.id===id);
+    if(!x) return;
+    document.getElementById('xEditId').value = x.id;
+    document.getElementById('xNom').value = x.nom;
+    document.getElementById('xDate').value = x.date;
+    document.getElementById('xLecteur').value = x.lecteur;
+    document.getElementById('xParticipants').value = x.participants;
+    document.getElementById('xLieu').value = x.lieu||'';
+    document.getElementById('xObs').value = x.obs||'';
+    document.getElementById('xassidaFormTitle').textContent = 'Modifier le Xassida';
+    document.getElementById('xassidaSubmitBtn').textContent = 'Modifier';
+    document.getElementById('xassidaCancelBtn').style.display = 'inline-flex';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  function deleteXassida(id){
+    if(!confirm('Supprimer cet enregistrement ?')) return;
+    state.xassida = state.xassida.filter(x=>x.id!==id);
+    persist();
+    renderXassida(document.getElementById('xassidaSearch').value);
+    toast('Xassida supprimé.');
+  }
+
+  xassidaForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const id = document.getElementById('xEditId').value;
+    const data = {
+      nom: document.getElementById('xNom').value.trim(),
+      date: document.getElementById('xDate').value,
+      lecteur: document.getElementById('xLecteur').value.trim(),
+      participants: parseInt(document.getElementById('xParticipants').value,10) || 0,
+      lieu: document.getElementById('xLieu').value.trim(),
+      obs: document.getElementById('xObs').value.trim()
+    };
+    if(id){
+      const idx = state.xassida.findIndex(x=>x.id===id);
+      if(idx>-1) state.xassida[idx] = Object.assign({id}, data);
+      toast('Xassida modifié avec succès.');
+    } else {
+      state.xassida.push(Object.assign({id:uid()}, data));
+      toast('Xassida ajouté avec succès.');
+    }
+    persist();
+    resetXassidaForm();
+    renderXassida(document.getElementById('xassidaSearch').value);
+  });
+  document.getElementById('xassidaCancelBtn').addEventListener('click', resetXassidaForm);
+  document.getElementById('xassidaSearch').addEventListener('input', function(){ renderXassida(this.value); });
+
+  /* ---------- STATS ---------- */
+  function updateStats(){
+    const totalMembers = state.members.length;
+    const totalXassida = state.xassida.length;
+    const totalSeances = state.xassida.length;
+    const activeMembers = state.members.filter(m=>m.statut==='Actif').length;
+    const totalParticipants = state.xassida.reduce((s,x)=>s+(x.participants||0),0);
+
+    document.getElementById('statMembers').textContent = pad(totalMembers);
+    document.getElementById('statXassida').textContent = pad(totalXassida);
+    document.getElementById('statSeances').textContent = pad(totalSeances);
+    document.getElementById('statActive').textContent = pad(activeMembers);
+
+    document.getElementById('s2Members').textContent = pad(totalMembers);
+    document.getElementById('s2Xassida').textContent = pad(totalXassida);
+    document.getElementById('s2Seances').textContent = pad(totalSeances);
+    document.getElementById('s2Participants').textContent = pad(totalParticipants);
+  }
+  function pad(n){ return n < 10 ? '00'+n : n < 100 ? '0'+n : ''+n; }
+
+  let chartsInit = { members:null, xmonth:null, participants:null };
+  function monthLabel(dateStr){
+    const d = new Date(dateStr);
+    if(isNaN(d)) return null;
+    return d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});
+  }
+
+  function renderCharts(){
+    if(typeof Chart === 'undefined') return;
+    const blue = getComputedStyle(document.documentElement).getPropertyValue('--blue-700').trim() || '#1656B0';
+    const blueLight = getComputedStyle(document.documentElement).getPropertyValue('--blue-500').trim() || '#2E7BD6';
+    const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink-soft').trim() || '#4A5A78';
+
+    // Members evolution by registration month (cumulative)
+    const byMonth = {};
+    state.members.slice().sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(m=>{
+      const lbl = monthLabel(m.date);
+      if(lbl) byMonth[lbl] = (byMonth[lbl]||0) + 1;
+    });
+    const memberLabels = Object.keys(byMonth);
+    let running = 0;
+    const memberCumulative = memberLabels.map(l => running += byMonth[l]);
+
+    const xassidaByMonth = {};
+    state.xassida.forEach(x=>{
+      const lbl = monthLabel(x.date);
+      if(lbl) xassidaByMonth[lbl] = (xassidaByMonth[lbl]||0) + 1;
+    });
+    const xLabels = Object.keys(xassidaByMonth);
+    const xCounts = xLabels.map(l=>xassidaByMonth[l]);
+
+    const partLabels = state.xassida.map(x=>x.nom || 'Séance');
+    const partCounts = state.xassida.map(x=>x.participants||0);
+
+    const commonOpts = { responsive:true, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ color: ink, font:{size:10} }, grid:{ display:false } }, y:{ beginAtZero:true, ticks:{ color: ink } } } };
+
+    if(chartsInit.members) chartsInit.members.destroy();
+    chartsInit.members = new Chart(document.getElementById('chartMembers'), {
+      type:'line',
+      data:{ labels: memberLabels.length?memberLabels:['—'], datasets:[{ label:'Membres', data: memberCumulative.length?memberCumulative:[0], borderColor: blue, backgroundColor:'transparent', tension:.3, pointBackgroundColor:blue }] },
+      options: commonOpts
+    });
+
+    if(chartsInit.xmonth) chartsInit.xmonth.destroy();
+    chartsInit.xmonth = new Chart(document.getElementById('chartXassidaMonth'), {
+      type:'bar',
+      data:{ labels: xLabels.length?xLabels:['—'], datasets:[{ label:'Xassida', data: xCounts.length?xCounts:[0], backgroundColor: blueLight, borderRadius:5 }] },
+      options: commonOpts
+    });
+
+    if(chartsInit.participants) chartsInit.participants.destroy();
+    chartsInit.participants = new Chart(document.getElementById('chartParticipants'), {
+      type:'bar',
+      data:{ labels: partLabels.length?partLabels:['—'], datasets:[{ label:'Participants', data: partCounts.length?partCounts:[0], backgroundColor: blue, borderRadius:5 }] },
+      options: commonOpts
+    });
+  }
+
+  /* ---------- PARAMETRES ---------- */
+  document.getElementById('logoInput').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      const preview = document.getElementById('settingsLogoPreview');
+      preview.innerHTML = '<img src="'+ev.target.result+'" alt="Aperçu du logo">';
+      preview.dataset.pending = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('logoSaveBtn').addEventListener('click', function(){
+    const preview = document.getElementById('settingsLogoPreview');
+    if(preview.dataset.pending){
+      state.logo = preview.dataset.pending;
+      persist();
+      delete preview.dataset.pending;
+      applyBranding();
+      toast('Logo enregistré.');
+    } else {
+      toast('Choisissez une image avant d\u2019enregistrer.');
+    }
+  });
+  document.getElementById('logoResetBtn').addEventListener('click', function(){
+    state.logo = null;
+    persist();
+    document.getElementById('logoInput').value = '';
+    applyBranding();
+    const preview = document.getElementById('settingsLogoPreview');
+    preview.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#0B3D91" stroke-width="1.6" width="40" height="40"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M12 3v18M4.5 7.5l7.5 4.5 7.5-4.5"/></svg>';
+    toast('Logo réinitialisé.');
+  });
+
+  document.getElementById('saveNameBtn').addEventListener('click', function(){
+    const val = document.getElementById('dahiraNameInput').value.trim();
+    if(!val) return;
+    state.name = val;
+    persist();
+    applyBranding();
+    toast('Nom du Dahira enregistré.');
+  });
+
+  document.getElementById('saveCodeBtn').addEventListener('click', function(){
+    const n = document.getElementById('newCode').value;
+    const c = document.getElementById('confirmCode').value;
+    const msg = document.getElementById('codeMsg');
+    if(!n || n.length < 4){ msg.textContent = 'Le code doit contenir au moins 4 caractères.'; return; }
+    if(n !== c){ msg.textContent = 'Les deux codes ne correspondent pas.'; return; }
+    state.code = n;
+    persist();
+    msg.style.color = 'var(--success)';
+    msg.textContent = 'Code d\u2019accès mis à jour avec succès.';
+    document.getElementById('newCode').value = '';
+    document.getElementById('confirmCode').value = '';
+    toast('Code d\u2019accès modifié.');
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    const data = { dahira: state.name, membres: state.members, xassida: state.xassida, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'dahira-nouroudareyni-donnees.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('Export effectué.');
+  });
+
+  /* ---------- HELPERS ---------- */
+  function escapeHtml(str){
+    if(str===undefined||str===null) return '';
+    return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+  function formatDate(d){
+    if(!d) return '—';
+    const dt = new Date(d);
+    if(isNaN(dt)) return d;
+    return dt.toLocaleDateString('fr-FR');
+  }
+
+  function renderAll(){
+    applyBranding();
+    renderMembers('');
+    renderXassida('');
+    updateStats();
+  }
+
+  tryEnter();
+})();
+</script>
+</body>
+</html>
